@@ -1,0 +1,24 @@
+name: Data Management Workflow
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Runs at 2 AM UTC every day.
+  workflow_dispatch:
+
+jobs:
+  update-and-validate-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+      
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+      
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Update and Validate Data
+        run: python scripts/manage_data.py
