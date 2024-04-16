@@ -14,7 +14,7 @@ def validate_file_size(file_path, min_size_kb):
     if file_size_kb > min_size_kb:
         print(f"Validation passed for {file_path}")
     else:
-        print(f"Validation failed for {file_path}")
+        print(f"Validation failed for {file_path}, size: {file_size_kb} KB")
 
 def main():
     squad_urls = {
@@ -26,6 +26,12 @@ def main():
     
     # Adjust the base path as per the project structure
     base_path = "./data/raw"
+    
+    # Ensure the base path exists
+    if not os.path.exists(base_path):
+        os.makedirs(base_path)
+        print(f"Created directory {base_path}")
+
     for filename, url in squad_urls.items():
         save_path = os.path.join(base_path, filename)
         download_file(url, save_path)
