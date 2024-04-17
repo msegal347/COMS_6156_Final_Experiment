@@ -25,7 +25,7 @@ def main():
     }
     
     # Adjust the base path as per the project structure
-    base_path = "./data/raw"
+    base_path = os.path.join(os.path.dirname(__file__), "../../data/raw")
     
     # Ensure the base path exists
     if not os.path.exists(base_path):
