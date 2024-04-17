@@ -8,7 +8,7 @@ import math
 import collections
 from io import open
 
-from transformers import BasicTokenizer, whitespace_tokenize
+from transformers import BasicTokenizer
 
 # Required by XLNet evaluation method to compute optimal threshold (see write_predictions_extended() method)
 from utils_squad_evaluate import find_all_best_thresh_v2, make_qid_to_has_ans, get_raw_scores
@@ -90,6 +90,18 @@ class InputFeatures(object):
         self.start_position = start_position
         self.end_position = end_position
         self.is_impossible = is_impossible
+
+def whitespace_tokenize(text):
+    """
+    Tokenizes a text into a sequence of tokens separated by whitespace.
+    
+    Parameters:
+    - text (str): The string to tokenize.
+    
+    Returns:
+    - list of str: A list of tokens.
+    """
+    return text.split()
 
 
 def read_squad_examples(input_file, is_training, version_2_with_negative):
