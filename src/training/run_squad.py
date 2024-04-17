@@ -1,5 +1,3 @@
-""" Finetuning the library models for question-answering on SQuAD (Bert, XLM, XLNet)."""
-
 import argparse
 import logging
 import os
@@ -12,10 +10,13 @@ from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, Tenso
 from torch.utils.data.distributed import DistributedSampler
 from tqdm import tqdm, trange
 from torch.utils.tensorboard import SummaryWriter
-
+from torch.optim import AdamW
 from transformers import (WEIGHTS_NAME, BertConfig, BertForQuestionAnswering, BertTokenizer,
                           XLMConfig, XLMForQuestionAnswering, XLMTokenizer, XLNetConfig,
-                          XLNetForQuestionAnswering, XLNetTokenizer, AdamW, get_scheduler)
+                          XLNetForQuestionAnswering, XLNetTokenizer, get_scheduler)
+
+# Import necessary components for mixed precision training
+from torch.cuda.amp import GradScaler, autocast
 
 from utils_squad import (read_squad_examples, convert_examples_to_features,
                          RawResult, write_predictions, RawResultExtended, write_predictions_extended)
@@ -47,7 +48,6 @@ def create_model_and_tokenizer(args, model_classes):
 
 
 def train(args, train_dataset, model, tokenizer):
-    """Train the model"""
     tb_writer = SummaryWriter()
     args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
     train_sampler = RandomSampler(train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)
@@ -58,9 +58,7 @@ def train(args, train_dataset, model, tokenizer):
     optimizer = AdamW(model.parameters(), lr=args.learning_rate, eps=args.adam_epsilon)
     scheduler = get_scheduler("linear", optimizer=optimizer, num_warmup_steps=args.warmup_steps, num_training_steps=t_total)
 
-    if args.fp16:
-        from torch.cuda.amp import GradScaler, autocast
-        scaler = GradScaler()
+    scaler = GradScaler() if args.fp16 else None
 
     model.zero_grad()
     global_step = 0
@@ -70,15 +68,16 @@ def train(args, train_dataset, model, tokenizer):
             batch = tuple(t.to(args.device) for t in batch)
             inputs = {'input_ids': batch[0], 'attention_mask': batch[1], 'token_type_ids': batch[2] if args.model_type != 'xlm' else None, 'start_positions': batch[3], 'end_positions': batch[4]}
 
-            with autocast(enabled=args.fp16):
-                outputs = model(**inputs)
-                loss = outputs.loss
-
             if args.fp16:
+                with autocast():
+                    outputs = model(**inputs)
+                    loss = outputs.loss
                 scaler.scale(loss).backward()
                 scaler.step(optimizer)
                 scaler.update()
             else:
+                outputs = model(**inputs)
+                loss = outputs.loss
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
                 optimizer.step()
@@ -229,19 +228,16 @@ def load_and_cache_examples(args, tokenizer, evaluate=False, output_examples=Fal
 
 def main():
     parser = argparse.ArgumentParser()
-
     # Required parameters
     parser.add_argument("--train_file", type=str, required=True, help="SQuAD json for training.")
     parser.add_argument("--predict_file", type=str, required=True, help="SQuAD json for predictions.")
     parser.add_argument("--model_type", type=str, required=True, choices=['bert', 'xlnet', 'xlm'], help="Model type selected.")
     parser.add_argument("--model_name_or_path", type=str, required=True, help="Path to pre-trained model or shortcut name.")
     parser.add_argument("--output_dir", type=str, required=True, help="The output directory where the model checkpoints and predictions will be written.")
-
     # Other parameters
     parser.add_argument("--config_name", type=str, default="", help="Pretrained config name or path if not the same as model_name")
     parser.add_argument("--tokenizer_name", type=str, default="", help="Pretrained tokenizer name or path if not the same as model_name")
     parser.add_argument("--cache_dir", type=str, default="", help="Where to store the pre-trained models downloaded from s3")
-
     parser.add_argument('--version_2_with_negative', action='store_true', help='If true, the SQuAD examples contain some that do not have an answer.')
     parser.add_argument('--null_score_diff_threshold', type=float, default=0.0, help="Threshold for predicting null.")
     parser.add_argument("--max_seq_length", type=int, default=384, help="The maximum total input sequence length after WordPiece tokenization.")
@@ -251,7 +247,6 @@ def main():
     parser.add_argument("--do_eval", action='store_true', help="Whether to run eval on the dev set.")
     parser.add_argument("--evaluate_during_training", action='store_true', help="Run evaluation during training at each logging step.")
     parser.add_argument("--do_lower_case", action='store_true', help="Set this flag if you are using an uncased model.")
-
     parser.add_argument("--per_gpu_train_batch_size", type=int, default=8, help="Batch size per GPU/CPU for training.")
     parser.add_argument("--per_gpu_eval_batch_size", type=int, default=8, help="Batch size per GPU/CPU for evaluation.")
     parser.add_argument("--learning_rate", type=float, default=5e-5, help="The initial learning rate for Adam.")
@@ -291,6 +286,7 @@ def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu")
     args.n_gpu = torch.cuda.device_count() if torch.cuda.is_available() and not args.no_cuda else 1
+
     args.device = device
 
     set_seed(args)
