@@ -3,6 +3,7 @@ import logging
 import os
 import random
 import glob
+import shutil
 
 import numpy as np
 import torch
@@ -46,6 +47,14 @@ def create_model_and_tokenizer(args, model_classes):
     model = model_class.from_pretrained(args.model_name_or_path, from_tf=bool('.ckpt' in args.model_name_or_path), config=config, cache_dir=args.cache_dir)
     return model, tokenizer, model_class
 
+def cleanup_checkpoints(directory, max_keep=3):
+    """Keep only the `max_keep` most recent checkpoint directories."""
+    checkpoints = sorted([os.path.join(directory, d) for d in os.listdir(directory) if d.startswith('checkpoint-')],
+                         key=os.path.getmtime, reverse=True)
+    if len(checkpoints) > max_keep:
+        for old_checkpoint in checkpoints[max_keep:]:
+            shutil.rmtree(old_checkpoint)
+            logger.info(f"Removed old checkpoint: {old_checkpoint}")
 
 def train(args, train_dataset, model, tokenizer):
     tb_writer = SummaryWriter()
@@ -53,11 +62,11 @@ def train(args, train_dataset, model, tokenizer):
     train_sampler = RandomSampler(train_dataset) if args.local_rank == -1 else DistributedSampler(train_dataset)
     train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
 
-    t_total = args.max_steps if args.max_steps > 0 else len(train_dataloader) // args.gradient_accumulation_steps * args.num_train_epochs
+    # Calculate total steps
+    t_total = args.max_steps if args.max_steps > 0 else len(train_dataloader) * args.num_train_epochs
 
     optimizer = AdamW(model.parameters(), lr=args.learning_rate, eps=args.adam_epsilon)
     scheduler = get_scheduler("linear", optimizer=optimizer, num_warmup_steps=args.warmup_steps, num_training_steps=t_total)
-
     scaler = GradScaler() if args.fp16 else None
 
     model.zero_grad()
@@ -82,12 +91,12 @@ def train(args, train_dataset, model, tokenizer):
                 torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
                 optimizer.step()
 
-            scheduler.step()
+            scheduler.step()  # Update the learning rate.
             model.zero_grad()
             global_step += 1
 
             if args.local_rank in [-1, 0] and global_step % args.logging_steps == 0:
-                tb_writer.add_scalar('lr', scheduler.get_last_lr()[0], global_step)
+                tb_writer.add_scalar('lr', scheduler.get_lr()[0], global_step)  # Change get_last_lr() to get_lr() depending on PyTorch version
                 tb_writer.add_scalar('loss', loss.item(), global_step)
 
             if global_step % args.save_steps == 0 or global_step == t_total:
@@ -97,10 +106,14 @@ def train(args, train_dataset, model, tokenizer):
                 tokenizer.save_pretrained(output_dir)
                 logger.info("Saving model checkpoint to %s", output_dir)
 
+                # Call cleanup_checkpoints to remove old checkpoints
+                cleanup_checkpoints(args.output_dir, max_keep=3)
+
             if global_step == t_total:
                 break
     tb_writer.close()
     return global_step, loss.item()
+
 
 
 def evaluate(args, model, tokenizer, prefix=""):
