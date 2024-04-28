@@ -5,12 +5,6 @@ import shap
 def interpret_squad_model_with_shap(model_path, tokenizer, question, context):
     """
     Interpret the SQuAD model predictions using SHAP.
-    
-    Parameters:
-    - model_path (str): Path to the saved trained BERT model.
-    - tokenizer (BertTokenizer): Tokenizer for the BERT model.
-    - question (str): The question text.
-    - context (str): The context text where the answer may be found.
     """
     # Ensure model and tokenizer are on the same device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -49,6 +43,6 @@ if __name__ == "__main__":
     question = "What is the capital of France?"
     context = "Paris is the capital and most populous city of France."
 
-    model_path = "./path/to/your/model"  # Adjust this path to your model's location
+    model_path = './models/saved_models/squad_model.pth'   
 
     interpret_squad_model_with_shap(model_path, tokenizer, question, context)

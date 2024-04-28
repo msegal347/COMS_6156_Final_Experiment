@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coms-6156-imagenet-kubeflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: imagenet-pipeline
+  template:
+    metadata:
+      labels:
+        app: imagenet-pipeline
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: cloud.google.com/gke-nodepool
+                operator: In
+                values:
+                - n1-standard-4-node-pool  
+      containers:
+      - name: imagenet-pipeline-container
+        image: coms-6156-kubeflow/imagenet-image-name:latest  
+        ports:
+        - containerPort: 80  
+        resources:
+          requests:
+            cpu: "4"  
+            memory: "15Gi"  
+            nvidia.com/gpu: "4"  
+          limits:
+            cpu: "4"
+            memory: "15Gi"
+            nvidia.com/gpu: "4"
+        env:
+          - name: ENV_VAR_NAME
+            value: "imagenet_training_pipeline"  
+        volumeMounts:
+          - name: imagenet-volume
+            mountPath: /data  
+      volumes:
+        - name: imagenet-volume
+          persistentVolumeClaim:
+            claimName: imagenet-pvc  

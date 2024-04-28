@@ -8,7 +8,8 @@
 │   ├── github_actions/             # GitHub Actions workflows
 │   │   └── main.yml                # Main GitHub Actions workflow file
 │   ├── automl/                     # AutoML configurations and scripts
-│   │   └── katib_experiment.yaml   # Katib experiment configuration
+│   │   └── katib_imagenet_grid.yaml   # Katib experiment configuration
+│   │   └── katib_squad_grid.yaml   # Katib experiment configuration
 │   ├── model_interpretability/     # SHAP and other interpretability tools
 │   │   └── shap_analysis.py        # SHAP analysis script
 │   ├── data_quality/               # Data validation using SodaCore

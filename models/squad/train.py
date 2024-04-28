@@ -2,10 +2,12 @@ from transformers import BertTokenizerFast, BertForQuestionAnswering, TrainingAr
 from datasets import load_dataset, load_metric
 import torch
 
+### Adapted from: https://github.com/kamalkraj/BERT-SQuAD/tree/master
+
 def prepare_train_features(examples, tokenizer):
-    # Tokenize our examples with truncation and padding, but keep the overflows using a stride. 
-    # This results in one example possible giving several features when a context is long,
-    # each of those features having a context that overlaps a bit the context of the previous feature.
+    """
+    Prepare the training features for the SQuAD dataset.
+    """
     tokenized_examples = tokenizer(
         examples["question"],
         examples["context"],
@@ -109,7 +111,7 @@ def main():
 
     # Train and Save
     trainer.train()
-    model.save_pretrained("./trained_model")
+    model.save_pretrained("./saved_models/squad_model")
 
 if __name__ == "__main__":
     main()

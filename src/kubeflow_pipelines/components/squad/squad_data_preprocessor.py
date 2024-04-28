@@ -1,11 +1,15 @@
-import json
-import pandas as pd
-import os
+import kfp
+from kfp.v2.dsl import component, InputPath, OutputPath
 
-def process_squad(squad_path, processed_path):
-    """
-    Processes the SQuAD dataset by flattening it and saving it to a CSV file.
-    """
+base_image = 'gcr.io/coms-6156-kubeflow/squad:latest'
+
+@component(base_image=base_image)
+def process_squad_data(squad_path: InputPath(), processed_path: OutputPath()):
+    import json
+    import pandas as pd
+    import os
+
+    # Load the SQuAD data from the specified input path
     with open(squad_path, 'r') as f:
         squad_data = json.load(f)
     
@@ -25,16 +29,12 @@ def process_squad(squad_path, processed_path):
                     record['answers'] = []
                 records.append(record)
     
+    # Convert the records into a DataFrame
     df = pd.DataFrame(records)
     
-    # Ensure the directory exists
+    # Ensure the output directory exists
     os.makedirs(os.path.dirname(processed_path), exist_ok=True)
     
+    # Save the processed data to the specified output path
     df.to_csv(processed_path, index=False)
     print(f"Processed SQuAD dataset saved to {processed_path}")
-
-if __name__ == "__main__":
-    process_squad('./data/raw/SQuAD_1.1_train.json', './data/processed/SQuAD_1.1_train_processed.csv')
-    process_squad('./data/raw/SQuAD_1.1_dev.json', './data/processed/SQuAD_1.1_dev_processed.csv')    
-    process_squad('./data/raw/SQuAD_2.0_train.json', './data/processed/SQuAD_2.0_train_processed.csv')
-    process_squad('./data/raw/SQuAD_2.0_dev.json', './data/processed/SQuAD_2.0_dev_processed.csv')

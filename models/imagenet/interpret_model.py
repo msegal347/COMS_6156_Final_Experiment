@@ -15,8 +15,7 @@ def load_imagenet_data(batch_size=1, num_batches=1):
         transforms.ToTensor(),
     ])
 
-    # Assuming ImageNet validation set is stored in `imagenet_data_path/val`
-    imagenet_data_path = "/path/to/imagenet_data"
+    imagenet_data_path = "./data/imagenet/processed"
     imagenet_dataset = datasets.ImageFolder(root=f"{imagenet_data_path}/val", transform=transform)
     imagenet_loader = DataLoader(imagenet_dataset, batch_size=batch_size, shuffle=True)
     
@@ -45,7 +44,9 @@ def interpret_model_with_shap(model, data_loader):
 
 if __name__ == "__main__":
     # Load a pretrained ResNet18 model
-    model = resnet18(pretrained=True)
+    model_path = './models/saved_models/imagenet_resnet18.pth' 
+    model = resnet18(pretrained=False)
+    #model = resnet18(pretrained=True)
     model.eval()
 
     # Load ImageNet data

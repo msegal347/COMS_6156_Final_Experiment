@@ -2,6 +2,9 @@ import requests
 import os
 
 def download_file(url, save_path):
+    """
+    Downloads a file from the specified URL and saves it to the specified path.
+    """
     response = requests.get(url, stream=True)
     with open(save_path, "wb") as file:
         for chunk in response.iter_content(chunk_size=1024):
@@ -10,6 +13,9 @@ def download_file(url, save_path):
     print(f"Downloaded {save_path}")
 
 def validate_file_size(file_path, min_size_kb):
+    """
+    Validates the size of the specified file against the specified minimum size.
+    """
     file_size_kb = os.path.getsize(file_path) / 1024
     if file_size_kb > min_size_kb:
         print(f"Validation passed for {file_path}")
@@ -24,7 +30,6 @@ def main():
         "SQuAD_2.0_dev.json": "https://rajpurkar.github.io/SQuAD-explorer/dataset/dev-v2.0.json"
     }
     
-    # Adjust the base path as per the project structure
     base_path = os.path.join(os.path.dirname(__file__), "../../data/raw")
     
     # Ensure the base path exists
@@ -35,8 +40,7 @@ def main():
     for filename, url in squad_urls.items():
         save_path = os.path.join(base_path, filename)
         download_file(url, save_path)
-        # Assuming a simple file size check for validation; adjust the min_size_kb as needed
-        validate_file_size(save_path, 1000)  # Minimum file size in KB
+        validate_file_size(save_path, 1000)  
 
 if __name__ == "__main__":
     main()

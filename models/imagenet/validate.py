@@ -9,10 +9,6 @@ import os
 def validate_imagenet_model(model_path, data_dir):
     """
     Validates a trained ResNet-18 model on the ImageNet validation dataset.
-
-    Parameters:
-    - model_path (str): Path to the saved trained model.
-    - data_dir (str): Directory path to the ImageNet dataset.
     """
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -50,6 +46,6 @@ def validate_imagenet_model(model_path, data_dir):
     print(f'Accuracy of the network on the validation images: {100 * correct / total}%')
 
 if __name__ == "__main__":
-    model_path = './models/saved_models/imagenet_resnet18.pth'  # Update this path to your saved model
-    data_dir = '/path/to/your/imagenet/data'  # Update this path to your ImageNet data directory
+    model_path = './models/saved_models/imagenet_resnet18.pth' 
+    data_dir = './data/imagenet/processed'  
     validate_imagenet_model(model_path, data_dir)

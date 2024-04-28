@@ -1,13 +1,17 @@
-import pandas as pd
-import logging
-import os
+import kfp
+from kfp.v2.dsl import component, InputPath
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+base_image = 'gcr.io/coms-6156-kubeflow/squad:latest'
 
-def squad_data_quality_checks(file_path):
-    """
-    SQuAD data quality checks.
-    """
+@component(base_image=base_image)
+def squad_data_quality_check(file_path: InputPath()):
+    import pandas as pd
+    import logging
+    import os
+
+    # Set up basic configuration for logging
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
     if not os.path.exists(file_path):
         logging.error(f"The file {file_path} does not exist.")
         return
@@ -32,18 +36,9 @@ def squad_data_quality_checks(file_path):
         logging.error("'id' column in SQuAD dataset is not unique.")
         return
     
+    # Optional: Check for non-empty context and questions
     if (df['context'].str.strip() == '').any() or (df['question'].str.strip() == '').any():
         logging.error("Empty strings found in 'context' or 'question' columns.")
         return
 
     logging.info("SQuAD data quality checks passed.")
-
-if __name__ == "__main__":
-    process_squad_1_train_csv = './data/processed/SQuAD_1.1_train_processed.csv'
-    process_squad_1_dev_csv = './data/processed/SQuAD_1.1_dev_processed.csv'
-    process_squad_2_train_csv = './data/processed/SQuAD_2.0_train_processed.csv'
-    process_squad_2_dev_csv = './data/processed/SQuAD_2.0_dev_processed.csv'
-    squad_data_quality_checks(process_squad_1_train_csv)
-    squad_data_quality_checks(process_squad_1_dev_csv)
-    squad_data_quality_checks(process_squad_2_train_csv)
-    squad_data_quality_checks(process_squad_2_dev_csv)

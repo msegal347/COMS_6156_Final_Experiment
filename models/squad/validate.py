@@ -1,8 +1,11 @@
 from transformers import BertTokenizerFast, BertForQuestionAnswering
-from transformers import TrainingArguments, Trainer
+from transformers import TrainingArguments, Trainer, EvalPrediction
 from datasets import load_dataset, load_metric
+from collections import defaultdict
 import numpy as np
 import torch
+
+### Adapted from: https://github.com/kamalkraj/BERT-SQuAD/tree/master
 
 def prepare_validation_features(examples, tokenizer):
     # Tokenization
@@ -37,6 +40,67 @@ def prepare_validation_features(examples, tokenizer):
 
     return tokenized_examples
 
+def postprocess_qa_predictions(examples, features, predictions, version_2_with_negative=False):
+    assert len(predictions["start_logits"]) == len(predictions["end_logits"]) == len(features)
+    all_start_logits, all_end_logits = predictions["start_logits"], predictions["end_logits"]
+
+    # Build a map example to its corresponding features.
+    example_id_to_index = {k: i for i, k in enumerate(examples["id"])}
+    features_per_example = defaultdict(list)
+    for i, feature in enumerate(features):
+        features_per_example[example_id_to_index[feature["example_id"]]].append(i)
+
+    # The final predictions per example.
+    all_predictions = defaultdict(str)
+    for example_id, feature_indices in features_per_example.items():
+        min_null_score = None  # Only used if version_2_with_negative is True
+        context = examples[example_id_to_index[example_id]]["context"]
+        valid_answers = []
+
+        for feature_index in feature_indices:
+            start_logits = all_start_logits[feature_index]
+            end_logits = all_end_logits[feature_index]
+            offset_mapping = features[feature_index]["offset_mapping"]
+
+            # Update minimum null prediction.
+            cls_index = features[feature_index]["input_ids"].index(tokenizer.cls_token_id)
+            feature_null_score = start_logits[cls_index] + end_logits[cls_index]
+            if min_null_score is None or min_null_score < feature_null_score:
+                min_null_score = feature_null_score
+
+            # Go through all possibilities for this feature.
+            start_indexes = np.argsort(start_logits)[-1 : -11 : -1].tolist()
+            end_indexes = np.argsort(end_logits)[-1 : -11 : -1].tolist()
+            for start_index in start_indexes:
+                for end_index in end_indexes:
+                    # Ignore out-of-scope answers.
+                    if start_index >= len(offset_mapping) or end_index >= len(offset_mapping):
+                        continue
+                    if offset_mapping[start_index] is None or offset_mapping[end_index] is None:
+                        continue
+                    if end_index < start_index or end_index - start_index + 1 > 30:
+                        continue
+
+                    valid_answers.append(
+                        {
+                            "score": start_logits[start_index] + end_logits[end_index],
+                            "text": context[offset_mapping[start_index][0]:offset_mapping[end_index][1]]
+                        }
+                    )
+
+        if version_2_with_negative:
+            # Compare and save the null score with the score of best non-null answer.
+            if min_null_score < max([va["score"] for va in valid_answers], default=0):
+                all_predictions[example_id] = ""
+            else:
+                best_answer = max(valid_answers, key=lambda x: x["score"], default={"text": ""})
+                all_predictions[example_id] = best_answer["text"]
+        else:
+            best_answer = max(valid_answers, key=lambda x: x["score"], default={"text": ""})
+            all_predictions[example_id] = best_answer["text"]
+
+    return all_predictions
+
 def post_processing_function(examples, features, predictions, stage="eval"):
     # Post-processing: we match the start logits and end logits to answers in the original context.
     predictions = postprocess_qa_predictions(examples=examples, features=features, predictions=predictions, version_2_with_negative=True)
@@ -45,8 +109,10 @@ def post_processing_function(examples, features, predictions, stage="eval"):
     references = [{"id": ex["id"], "answers": ex["answers"]} for ex in examples]
     return EvalPrediction(predictions=formatted_predictions, label_ids=references)
 
-def compute_metrics(p: EvalPrediction):
+def compute_metrics(p, metric):
+    # Pass the metric explicitly
     return metric.compute(predictions=p.predictions, references=p.label_ids)
+
 
 def main():
     model_path = './path/to/your/saved/model'

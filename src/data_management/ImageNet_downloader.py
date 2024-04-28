@@ -4,15 +4,18 @@ import io
 import os
 
 def download_tiny_imagenet(url, save_path):
+    """
+    Downloads the Tiny ImageNet dataset from the specified URL and saves it to the specified path.
+    """
     print("Starting download of Tiny ImageNet...")
     try:
         with requests.get(url, stream=True) as response:
-            response.raise_for_status()  # Raises an HTTPError for bad responses
+            response.raise_for_status() 
 
             if "application/zip" in response.headers.get("Content-Type", ""):
                 zip_path = os.path.join(save_path, 'tiny-imagenet-200.zip')
                 with open(zip_path, 'wb') as file:
-                    for data in response.iter_content(1024):  # 1 Kibibyte blocks
+                    for data in response.iter_content(1024):  
                         file.write(data)
 
                 print("Download complete. Extracting file...")
@@ -24,15 +27,15 @@ def download_tiny_imagenet(url, save_path):
                 print("Failed to download: Not a zip file.")
 
     except requests.exceptions.HTTPError as e:
-        print(f"HTTP error occurred: {e}")  # Specific HTTP related errors
+        print(f"HTTP error occurred: {e}") 
     except requests.exceptions.RequestException as e:
-        print(f"Error downloading the file: {e}")  # Catch any other errors that might occur
+        print(f"Error downloading the file: {e}")  
     except zipfile.BadZipFile:
         print("Error extracting the file: The downloaded file may be corrupt.")
 
 def main():
     tiny_imagenet_url = "http://cs231n.stanford.edu/tiny-imagenet-200.zip"
-    # Assuming the script is executed from the project root
+
     save_path = "./data/raw/tiny_imagenet"
     if not os.path.exists(save_path):
         os.makedirs(save_path)

@@ -1,0 +1,54 @@
+---
+apiVersion: kubeflow.org/v1beta1
+kind: Experiment
+metadata:
+  namespace: kubeflow
+  name: squad-bert-grid-search
+spec:
+  objective:
+    type: minimize
+    goal: 0.001
+    objectiveMetricName: loss  
+  algorithm:
+    algorithmName: grid
+  parallelTrialCount: 3
+  maxTrialCount: 12
+  maxFailedTrialCount: 3
+  parameters:
+    - name: lr
+      parameterType: double
+      feasibleSpace:
+        min: "0.00001"
+        step: "0.00001"
+        max: "0.0001"
+    - name: batch_size
+      parameterType: integer
+      feasibleSpace:
+        min: "8"
+        step: "4"
+        max: "16"
+  trialTemplate:
+    primaryContainerName: training-container
+    trialParameters:
+      - name: learningRate
+        description: Learning rate for the training model
+        reference: lr
+      - name: batchSize
+        description: Batch size for the training model
+        reference: batch_size
+    trialSpec:
+      apiVersion: batch/v1
+      kind: Job
+      spec:
+        template:
+          spec:
+            containers:
+              - name: training-container
+                image: squad-training-image:latest  
+                command:
+                  - "python3"
+                  - "./kubeflow_pipelines/pipelines/squad_model_pipeline.py" 
+                  - "--epochs=3"  
+                  - "--batch-size=${trialParameters.batchSize}"
+                  - "--lr=${trialParameters.learningRate}"
+            restartPolicy: Never
