@@ -51,3 +51,4 @@ The src/kubeflow_pipelines/pipelines directory contains the code for the Kubeflo
 
 The tests/unit_tests directory contains the unit tests for the data management functions.
 
+![Pipeline](project-overview.png)
