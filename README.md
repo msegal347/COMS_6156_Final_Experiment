@@ -4,23 +4,13 @@
 
 This repository contains the code and documentation for the final project of COMS 6156. The project aims to enhance the MLOps pipeline of a machine learning model by integrating Kubeflow, GitHub Actions, AutoML, and SHAP.
 
-Pipeline deployment code for both the ResNet-18 and BERT-SQuAD models are in the deployments directory.
-
-Initial experimentation with SHAP is stored in the experiments directory.
-
-The code to train the basic models is in the models directory, and is directly adapted from:
-
-https://github.com/kamalkraj/BERT-SQuAD/tree/master
-
-https://huggingface.co/microsoft/resnet-18
-
 The pipelines are generally structured like so:
 
 ![Pipeline](project-overview.png)
 
 ### Setup
 
-To run the code, you will need to install the necessary dependencies. You can do this by running the following command:
+To run the code, you will need to install the necessary dependencies. You can do this by navigating to /tools/setup and running the following command:
 
 ```bash
 pip install -r requirements.txt
@@ -44,6 +34,16 @@ Once Kubeflow is installed, you will also need to configure an additional Kubern
 Once Kubeflow is installed and the necessary resources are configured, you initialize a notebook inside of Kubeflow, clone this repository, and run the code contained within the notebooks in the src/kubeflow_pipelines/pipelines directory. This will generate the YAML files for the pipeline, which can then be selected within Kubeflow and run.
 
 ### Code Structure
+
+The code to train the basic models is in the models directory, and is directly adapted from:
+
+https://github.com/kamalkraj/BERT-SQuAD/tree/master
+
+https://huggingface.co/microsoft/resnet-18
+
+The deployments directory contains the code for the deployment of the models to the Kubernetes cluster.
+
+Initial experimentation with SHAP on pretrained models is stored in the experiments directory.
 
 The src/automl directory contains the code for the AutoML Grid Search runs for the ResNet-18 and BERT-SQuAD models.
 
