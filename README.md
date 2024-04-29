@@ -14,6 +14,10 @@ https://github.com/kamalkraj/BERT-SQuAD/tree/master
 
 https://huggingface.co/microsoft/resnet-18
 
+The pipelines are generally structured like so:
+
+![Pipeline](project-overview.png)
+
 ### Setup
 
 To run the code, you will need to install the necessary dependencies. You can do this by running the following command:
@@ -51,4 +55,3 @@ The src/kubeflow_pipelines/pipelines directory contains the code for the Kubeflo
 
 The tests/unit_tests directory contains the unit tests for the data management functions.
 
-![Pipeline](project-overview.png)
